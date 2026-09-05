@@ -808,6 +808,7 @@ td code {
 .tag-hard_decline { background: var(--danger-light); color: var(--danger); }
 .tag-timeout { background: #E6FCFF; color: #008DA6; }
 .tag-duplicate { background: #EBECF0; color: #505F79; }
+.tag-method { background: #F4F5F7; color: #344563; border: 1px solid #DFE1E6; text-transform: uppercase; font-size: 10.5px; }
 
 .table-prob-container {
     display: flex;

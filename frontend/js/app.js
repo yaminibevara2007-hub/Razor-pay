@@ -5,6 +5,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initAnalyzerForm();
     initPresets();
     loadDashboard();
+    startDashboardPolling();
 });
 
 // ==========================================
@@ -64,47 +65,109 @@ function switchTab(tabName) {
 
     if (tabName === 'dashboard') {
         loadDashboard();
-    } else if (tabName === 'transactions') {
-        loadTransactions();
-    } else if (tabName === 'model') {
-        loadModelMetrics();
+        startDashboardPolling();
+    } else {
+        stopDashboardPolling();
+        if (tabName === 'transactions') {
+            loadTransactions();
+        } else if (tabName === 'model') {
+            loadModelMetrics();
+        }
     }
 }
 
 // ==========================================
 // DASHBOARD
 // ==========================================
-async function loadDashboard() {
+let dashboardPollInterval = null;
+
+function startDashboardPolling() {
+    stopDashboardPolling();
+    // Poll every 20 seconds only when on dashboard tab
+    dashboardPollInterval = setInterval(() => {
+        const activeTab = document.querySelector('.tab.active');
+        if (activeTab && activeTab.id === 'dashboard') {
+            loadDashboard(true);
+        }
+    }, 20000);
+}
+
+function stopDashboardPolling() {
+    if (dashboardPollInterval) {
+        clearInterval(dashboardPollInterval);
+        dashboardPollInterval = null;
+    }
+}
+
+async function refreshDashboardManual() {
+    const btn = document.getElementById('refresh-dashboard-btn');
+    const originalText = btn ? btn.innerHTML : '';
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner"></span> Fetching Live Data...';
+    }
+    try {
+        await loadDashboard();
+        showToast('Dashboard synchronized with database', 'info');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        }
+    }
+}
+
+async function loadDashboard(isSilent = false) {
     try {
         const [overview, comparison] = await Promise.all([
             API.getOverview(),
             API.getComparison()
         ]);
 
-        // Update KPI metrics
-        document.getElementById('total-analyzed').textContent = (overview.total_analyzed || 0).toLocaleString();
+        const totalAnalyzed = overview.total_analyzed || 0;
+
+        // Update KPI metrics directly from real database records
+        document.getElementById('total-analyzed').textContent = totalAnalyzed.toLocaleString();
         document.getElementById('recovery-rate').textContent = (overview.recovery_rate || 0).toFixed(1) + '%';
         document.getElementById('recovered-value').textContent = '₹' + formatNumber(overview.total_recovery_value || 0);
         document.getElementById('avg-probability').textContent = ((overview.average_recovery_probability || 0) * 100).toFixed(0) + '%';
 
         // Update comparison stats
         const improvementTag = document.getElementById('rate-improvement-badge');
-        if (improvementTag && comparison.improvement) {
-            const diff = comparison.improvement.better_recovery_rate;
-            improvementTag.textContent = (diff >= 0 ? `+${diff}%` : `${diff}%`) + ' vs Baseline';
+        if (improvementTag) {
+            const diff = comparison?.improvement?.better_recovery_rate || 0;
+            improvementTag.textContent = (diff >= 0 ? `+${diff.toFixed(1)}%` : `${diff.toFixed(1)}%`) + ' vs Baseline';
         }
 
         const savedCostsTag = document.getElementById('saved-retries-count');
-        if (savedCostsTag && comparison.improvement) {
-            savedCostsTag.textContent = `${comparison.improvement.fewer_unnecessary_retries} retries saved`;
+        if (savedCostsTag) {
+            const retriesSaved = comparison?.improvement?.fewer_unnecessary_retries || 0;
+            savedCostsTag.textContent = `${retriesSaved} retries saved`;
         }
 
-        // Render charts
+        // Render charts with real database numbers
         updateComparisonChart(comparison);
         updateDecisionsChart(overview);
+
+        // Update Live indicator timestamp
+        const liveText = document.getElementById('live-indicator-text');
+        const liveDot = document.getElementById('live-dot');
+        const lastUpdated = document.getElementById('last-updated-time');
+        if (liveText) liveText.textContent = 'LIVE';
+        if (liveDot) liveDot.style.backgroundColor = '#31A24C';
+        if (lastUpdated) {
+            const now = new Date();
+            lastUpdated.textContent = 'Last updated: ' + now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true });
+        }
     } catch (error) {
         console.error('Error loading dashboard:', error);
-        showToast('Failed to load dashboard metrics: ' + error.message, 'error');
+        const liveText = document.getElementById('live-indicator-text');
+        const liveDot = document.getElementById('live-dot');
+        if (liveText) liveText.textContent = 'OFFLINE';
+        if (liveDot) liveDot.style.backgroundColor = '#E74C3C';
+        if (!isSilent) {
+            showToast('Failed to load dashboard metrics: ' + error.message, 'error');
+        }
     }
 }
 
@@ -133,7 +196,9 @@ function initAnalyzerForm() {
         try {
             const result = await API.analyzePayment(payload);
             displayAnalysisResult(result);
-            showToast('Payment analyzed successfully', 'success');
+            showToast('Payment analyzed & persisted to database', 'success');
+            // Background refresh dashboard so next view is immediately synced
+            loadDashboard(true);
         } catch (error) {
             console.error('Analysis error:', error);
             showToast('Error analyzing payment: ' + error.message, 'error');
@@ -252,14 +317,14 @@ async function loadTransactions() {
     const tbody = document.getElementById('transactionsBody');
     if (!tbody) return;
 
-    tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 24px;"><span class="spinner"></span> Loading transactions...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 24px;"><span class="spinner"></span> Loading transactions...</td></tr>';
 
     try {
         const transactions = await API.getTransactions(50);
         tbody.innerHTML = '';
 
         if (!transactions || transactions.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 32px; color: var(--text-light);">No transactions recorded yet. Use the Analyzer or click Generate Sample Data.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 32px; color: var(--text-light);">No transactions recorded yet. Analyze a payment in Recovery Analyzer to populate the ledger.</td></tr>';
             return;
         }
 
@@ -275,6 +340,7 @@ async function loadTransactions() {
                 <td><code>${txn.transaction_id}</code></td>
                 <td><strong>₹${formatNumber(txn.amount)}</strong></td>
                 <td><span class="tag-pill tag-${txn.failure_type}">${formatFailureType(txn.failure_type)}</span></td>
+                <td><span class="tag-pill tag-method">${formatPaymentMethod(txn.payment_method)}</span></td>
                 <td>
                     <div class="table-prob-container">
                         <span class="table-prob-val">${probPct}%</span>
@@ -289,8 +355,17 @@ async function loadTransactions() {
         });
     } catch (error) {
         console.error('Error loading transactions:', error);
-        tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--danger); padding: 24px;">Failed to load transactions: ${error.message}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: var(--danger); padding: 24px;">Failed to load transactions: ${error.message}</td></tr>`;
     }
+}
+
+function formatPaymentMethod(method) {
+    const map = {
+        'card': 'Card',
+        'upi': 'UPI',
+        'netbanking': 'NetBanking'
+    };
+    return map[method] || (method ? method.toUpperCase() : 'CARD');
 }
 
 function formatFailureType(type) {

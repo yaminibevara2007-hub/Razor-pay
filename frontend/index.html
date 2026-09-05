@@ -57,9 +57,16 @@
 
             <!-- 1. DASHBOARD TAB -->
             <section id="dashboard" class="tab active" aria-labelledby="tab-btn-dashboard">
-                <div class="section-header">
-                    <h2>Executive Overview</h2>
-                    <p>Real-time analytics and comparative impact of the adaptive AI recovery policy</p>
+                <div class="section-header" style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px;">
+                    <div>
+                        <h2>Executive Overview</h2>
+                        <p>Real-time analytics and comparative impact of the adaptive AI recovery policy</p>
+                    </div>
+                    <div class="live-status-indicator" id="dashboard-live-badge" style="display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 500; color: #27873F; background: rgba(49, 162, 76, 0.08); border: 1px solid rgba(49, 162, 76, 0.25); padding: 6px 14px; border-radius: 20px;">
+                        <span class="status-dot" id="live-dot" style="background-color: #31A24C; width: 8px; height: 8px; border-radius: 50%; display: inline-block; box-shadow: 0 0 6px #31A24C;"></span>
+                        <span id="live-indicator-text" style="font-weight: 700; letter-spacing: 0.5px;">LIVE</span>
+                        <span style="color: var(--text-muted, #718096); font-size: 12px; margin-left: 4px;" id="last-updated-time">Last updated: --</span>
+                    </div>
                 </div>
 
                 <!-- KPI Metric Cards -->
@@ -133,11 +140,14 @@
 
                 <!-- Quick Action Bar -->
                 <div class="action-buttons">
-                    <button class="btn btn-primary" id="generate-sample-btn" onclick="generateSampleData()">
-                        <span>🎲</span> Generate Sample Transactions
+                    <button class="btn btn-primary" id="refresh-dashboard-btn" onclick="refreshDashboardManual()">
+                        <span>🔄</span> Refresh Live Data
                     </button>
                     <button class="btn btn-secondary" onclick="downloadReport()">
                         <span>📥</span> Export CSV Report
+                    </button>
+                    <button class="btn btn-secondary" id="seed-test-btn" style="font-size: 12px; opacity: 0.75;" onclick="generateSampleData()" title="Developer testing utility">
+                        <span>🎲</span> Seed Test Batch
                     </button>
                 </div>
             </section>
@@ -304,6 +314,7 @@
                                     <th>Transaction ID</th>
                                     <th>Amount</th>
                                     <th>Failure Type</th>
+                                    <th>Payment Method</th>
                                     <th>Recovery Prob</th>
                                     <th>AI Action</th>
                                     <th>Expected Value</th>
@@ -312,7 +323,7 @@
                             </thead>
                             <tbody id="transactionsBody">
                                 <tr>
-                                    <td colspan="7" style="text-align: center; padding: 24px;">Loading transactions...</td>
+                                    <td colspan="8" style="text-align: center; padding: 24px;">Loading transactions...</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -368,7 +379,10 @@
                     <div class="model-info-left">
                         <h4>Adaptive Model Pipeline: XGBoost 2.0+ &amp; Scikit-Learn</h4>
                         <p id="model-trained-date">Trained at: Active</p>
-                        <p id="model-total-preds" style="color: var(--text-muted); font-size: 12px;"></p>
+                        <p id="model-dataset-note" style="color: var(--text-secondary); font-size: 13px; margin-top: 4px;">
+                            <strong>Dataset:</strong> Synthetic payment data modeled around realistic payment failure patterns (80/20 stratified split: 8,000 train / 2,000 test).
+                        </p>
+                        <p id="model-total-preds" style="color: var(--text-muted); font-size: 12px; margin-top: 2px;"></p>
                     </div>
 
                     <div>

@@ -46,7 +46,7 @@ def analyze_payment(data):
     })
     
     # Make Decision
-    decision_data = make_recovery_decision(transaction_id, recovery_prob, amount)
+    decision_data = make_recovery_decision(transaction_id, recovery_prob, amount, failure_type=failure_type)
     
     # Store decision
     recovery_decision = RecoveryDecision(
@@ -109,7 +109,7 @@ def seed_sample_transactions(count=30):
             'card_issuer': issuer
         }
         prob = predict_recovery_probability(features_dict)
-        decision = make_recovery_decision(txn_id, prob, amount)
+        decision = make_recovery_decision(txn_id, prob, amount, failure_type=failure)
         
         # Outcome simulation based on decision & prob
         if decision['action'] == 'RETRY':

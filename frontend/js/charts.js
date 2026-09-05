@@ -1,6 +1,36 @@
 let comparisonChartInstance = null;
 let decisionsChartInstance = null;
 
+function getOrCreateEmptyOverlay(canvas, id, text) {
+    const parent = canvas.parentElement;
+    let overlay = document.getElementById(id);
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = id;
+        overlay.style.position = 'absolute';
+        overlay.style.top = '0';
+        overlay.style.left = '0';
+        overlay.style.right = '0';
+        overlay.style.bottom = '0';
+        overlay.style.display = 'flex';
+        overlay.style.alignItems = 'center';
+        overlay.style.justifyContent = 'center';
+        overlay.style.flexDirection = 'column';
+        overlay.style.gap = '8px';
+        overlay.style.color = 'var(--text-muted, #718096)';
+        overlay.style.fontSize = '14px';
+        overlay.style.fontWeight = '500';
+        overlay.style.background = 'rgba(255, 255, 255, 0.95)';
+        overlay.style.borderRadius = '8px';
+        overlay.style.zIndex = '2';
+        overlay.style.pointerEvents = 'none';
+        parent.style.position = 'relative';
+        parent.appendChild(overlay);
+    }
+    overlay.innerHTML = `<span style="font-size: 24px; opacity: 0.6;">📊</span><span>${text}</span>`;
+    return overlay;
+}
+
 /**
  * Render or update the Baseline vs AI Comparison Bar Chart
  */
@@ -13,13 +43,46 @@ function updateComparisonChart(comparisonData) {
         comparisonChartInstance.destroy();
     }
 
-    const baselineRate = comparisonData?.baseline?.recovery_rate ?? 12.0;
-    const aiRate = comparisonData?.ai_model?.recovery_rate ?? 68.5;
+    const totalRetries = comparisonData?.baseline?.retry_attempts || 0;
+    const overlay = getOrCreateEmptyOverlay(canvas, 'comparison-empty-overlay', 'No analyzed transactions yet.');
+
+    if (totalRetries === 0) {
+        overlay.style.display = 'flex';
+        // Render empty chart with 0s
+        comparisonChartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['Naive Baseline', 'Adaptive AI Engine'],
+                datasets: [{
+                    label: 'Recovery Rate (%)',
+                    data: [0, 0],
+                    backgroundColor: ['rgba(178, 206, 255, 0.4)', 'rgba(49, 162, 76, 0.4)'],
+                    borderRadius: 8,
+                    barThickness: 48
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { beginAtZero: true, max: 100, ticks: { callback: v => v + '%' } },
+                    x: { grid: { display: false } }
+                }
+            }
+        });
+        return;
+    }
+
+    overlay.style.display = 'none';
+
+    const baselineRate = comparisonData?.baseline?.recovery_rate ?? 0.0;
+    const aiRate = comparisonData?.ai_model?.recovery_rate ?? 0.0;
 
     comparisonChartInstance = new Chart(ctx, {
         type: 'bar',
         data: {
-            labels: ['Baseline (Static Retry)', 'AI Recovery Engine'],
+            labels: ['Naive Baseline (Blind Retry All)', 'Adaptive AI Recovery Engine'],
             datasets: [{
                 label: 'Recovery Rate (%)',
                 data: [baselineRate, aiRate],
@@ -94,12 +157,16 @@ function updateDecisionsChart(overviewData) {
     const retryCount = overviewData?.retry_recommended || 0;
     const stopCount = overviewData?.stop_recommended || 0;
     const customerActionCount = overviewData?.customer_action_recommended || 0;
-
-    // Fallback if zero
     const total = retryCount + stopCount + customerActionCount;
-    const chartData = total > 0 
-        ? [retryCount, stopCount, customerActionCount]
-        : [1, 1, 1];
+
+    const overlay = getOrCreateEmptyOverlay(canvas, 'decisions-empty-overlay', 'No analyzed transactions yet.');
+
+    if (total === 0) {
+        overlay.style.display = 'flex';
+        return;
+    }
+
+    overlay.style.display = 'none';
 
     decisionsChartInstance = new Chart(ctx, {
         type: 'doughnut',
@@ -110,7 +177,7 @@ function updateDecisionsChart(overviewData) {
                 `Customer Action (${customerActionCount})`
             ],
             datasets: [{
-                data: chartData,
+                data: [retryCount, stopCount, customerActionCount],
                 backgroundColor: [
                     '#0052CC', // Primary Blue
                     '#E74C3C', // Danger Red

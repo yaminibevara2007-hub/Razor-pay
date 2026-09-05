@@ -4,7 +4,7 @@ from database.models import Transaction, RecoveryDecision
 from utils.constants import RETRY_COST_INR
 
 def calculate_overview():
-    """Calculate aggregate KPIs for dashboard"""
+    """Calculate aggregate KPIs for dashboard directly from SQLite database records"""
     total_transactions = Transaction.query.count()
     
     if total_transactions == 0:
@@ -27,9 +27,13 @@ def calculate_overview():
     
     avg_prob = db.session.query(func.avg(RecoveryDecision.predicted_recovery_prob)).scalar() or 0.0
     
-    total_value = db.session.query(func.sum(RecoveryDecision.expected_recovery_value)).scalar() or 0.0
+    # Recovered Value: sum of expected recovery values for RETRY decisions
+    total_value = db.session.query(func.sum(RecoveryDecision.expected_recovery_value)).filter(
+        RecoveryDecision.recommended_action == 'RETRY'
+    ).scalar() or 0.0
     
-    # Recovery rate across analyzed transactions
+    # Recovery rate across analyzed transactions:
+    # Formula: Recovery Rate (%) = (Successful Recoveries / Total Analyzed Transactions) * 100
     recovery_rate = (successful_recoveries / total_transactions * 100.0) if total_transactions > 0 else 0.0
     
     return {
@@ -44,7 +48,7 @@ def calculate_overview():
     }
 
 def calculate_baseline_comparison():
-    """Compare naive baseline strategy (blindly retry all) vs ML adaptive retry strategy"""
+    """Compare naive baseline strategy (blindly retry all) vs ML adaptive retry strategy using real database records"""
     total_transactions = Transaction.query.count()
     
     if total_transactions == 0:
@@ -53,10 +57,10 @@ def calculate_baseline_comparison():
                 'strategy': 'Always retry once (Naive)',
                 'retry_attempts': 0,
                 'successful_recoveries': 0,
-                'recovery_rate': 12.0
+                'recovery_rate': 0.0
             },
             'ai_model': {
-                'strategy': 'Adaptive ML Retry (P > 0.5)',
+                'strategy': 'Adaptive ML Retry (P > 0.6)',
                 'retry_attempts': 0,
                 'successful_recoveries': 0,
                 'recovery_rate': 0.0
@@ -74,16 +78,15 @@ def calculate_baseline_comparison():
         RecoveryDecision.actual_outcome == 'success'
     ).count()
     
-    # If not enough actual outcomes logged yet, compute from probabilities
-    if ai_retries > 0 and ai_successful == 0:
-        ai_successful = int(round(ai_retries * 0.72))
-        
+    # AI Recovery Rate: recovery efficiency of smart retries
+    # Formula: (AI Successful Recoveries / AI Retry Attempts) * 100
     ai_recovery_rate = (ai_successful / ai_retries * 100.0) if ai_retries > 0 else 0.0
     
-    # Baseline: Always retried every failed transaction
+    # Naive Baseline: Blindly retried all failed transactions
+    # Formula: (Baseline Successful Recoveries / Total Naive Retries) * 100
     baseline_retries = total_transactions
-    baseline_successful = max(1, int(round(total_transactions * 0.12)))  # Industry benchmark ~12%
-    baseline_recovery_rate = (baseline_successful / baseline_retries * 100.0) if baseline_retries > 0 else 12.0
+    baseline_successful = ai_successful
+    baseline_recovery_rate = (baseline_successful / baseline_retries * 100.0) if baseline_retries > 0 else 0.0
     
     unnecessary_retries_saved = max(0, baseline_retries - ai_retries)
     estimated_cost_savings = unnecessary_retries_saved * RETRY_COST_INR
@@ -96,7 +99,7 @@ def calculate_baseline_comparison():
             'recovery_rate': round(baseline_recovery_rate, 1)
         },
         'ai_model': {
-            'strategy': 'Adaptive ML Retry (P > 0.5)',
+            'strategy': 'Adaptive ML Retry (P > 0.6)',
             'retry_attempts': ai_retries,
             'successful_recoveries': ai_successful,
             'recovery_rate': round(ai_recovery_rate, 1)
