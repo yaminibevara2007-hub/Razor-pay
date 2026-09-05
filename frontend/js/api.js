@@ -1,7 +1,7 @@
 // Smart Payment Retry Engine - Secure API Client
 const API_BASE_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-    ? 'http://localhost:5005'
-    : window.location.origin;
+    ? (window.location.port === '5005' ? '' : 'http://localhost:5005')
+    : '';
 
 let _userToken = null;
 let _adminToken = null;

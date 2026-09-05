@@ -65,6 +65,8 @@ def create_app(config_class=Config):
         
     # Root discovery endpoint
     @app.route('/')
+    @app.route('/api')
+    @app.route('/api/')
     def root():
         return jsonify({
             'name': 'Smart Payment Retry Engine API',
@@ -76,12 +78,14 @@ def create_app(config_class=Config):
                 'analyze': '/api/payments/analyze',
                 'analytics': '/api/analytics/overview',
                 'comparison': '/api/analytics/comparison',
-                'model_metrics': '/api/model/metrics'
+                'model_metrics': '/api/model/metrics',
+                'model_info': '/api/model/info'
             }
         })
         
     # Safe health check endpoint (never exposes secrets, credentials, or internal paths)
     @app.route('/api/health')
+    @app.route('/health')
     def health():
         return jsonify({
             'status': 'healthy',
@@ -154,8 +158,9 @@ def _provision_default_users(app):
         db.session.rollback()
         app.logger.error(f"Failed to seed default accounts: {e}")
 
+app = create_app()
+
 if __name__ == '__main__':
-    app = create_app()
     port = int(os.environ.get('PORT', 5005))
     is_debug = app.config.get('DEBUG', False)
     print(f"Starting Smart Payment Retry Engine backend on http://localhost:{port} (Debug={is_debug})")

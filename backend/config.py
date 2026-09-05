@@ -12,8 +12,16 @@ if os.path.exists(env_path):
 
 class BaseConfig:
     """Base application configuration with secure defaults"""
-    INSTANCE_DIR = os.path.join(BASE_DIR, 'instance')
-    os.makedirs(INSTANCE_DIR, exist_ok=True)
+    # In Vercel serverless functions, only /tmp is writable
+    if os.environ.get('VERCEL'):
+        INSTANCE_DIR = '/tmp/instance'
+    else:
+        INSTANCE_DIR = os.path.join(BASE_DIR, 'instance')
+        
+    try:
+        os.makedirs(INSTANCE_DIR, exist_ok=True)
+    except OSError:
+        pass
     
     SQLALCHEMY_DATABASE_URI = os.environ.get(
         'DATABASE_URL', 
@@ -24,12 +32,18 @@ class BaseConfig:
     
     # Models and Data directories
     MODELS_DIR = os.path.join(BASE_DIR, 'models')
-    os.makedirs(MODELS_DIR, exist_ok=True)
+    try:
+        os.makedirs(MODELS_DIR, exist_ok=True)
+    except OSError:
+        pass
     MODEL_PATH = os.path.join(MODELS_DIR, 'recovery_model.pkl')
     SCALER_PATH = os.path.join(MODELS_DIR, 'scaler.pkl')
     
     DATA_DIR = os.path.join(PROJECT_ROOT, 'data')
-    os.makedirs(DATA_DIR, exist_ok=True)
+    try:
+        os.makedirs(DATA_DIR, exist_ok=True)
+    except OSError:
+        pass
     
     # CORS Origin Whitelist (comma-separated origins)
     _raw_origins = os.environ.get(
@@ -37,6 +51,8 @@ class BaseConfig:
         'http://localhost:8000,http://127.0.0.1:8000,http://localhost:3000,http://127.0.0.1:3000'
     )
     FRONTEND_ORIGINS = [origin.strip() for origin in _raw_origins.split(',') if origin.strip()]
+    if os.environ.get('VERCEL_URL'):
+        FRONTEND_ORIGINS.append(f"https://{os.environ.get('VERCEL_URL')}")
     
     # Rate Limiting
     RATELIMIT_DEFAULT = os.environ.get('RATELIMIT_DEFAULT', '120 per minute')
