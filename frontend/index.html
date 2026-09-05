@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Payment Retry Engine — AI-Powered Recovery</title>
+    <meta name="description" content="AI-Powered Adaptive Payment Recovery System utilizing XGBoost machine learning to predict recovery likelihood, minimize retry costs, and boost transaction success rates.">
+    <link rel="icon" type="image/svg+xml" href="assets/logo.svg">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+    <!-- Chart.js 3.9.1 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+</head>
+<body>
+    <div class="app">
+        <!-- Global Header -->
+        <header class="header">
+            <div class="header-content">
+                <div class="brand-wrapper">
+                    <div class="brand-icon">
+                        <img src="assets/logo.svg" alt="Payment Retry Engine Logo">
+                    </div>
+                    <div>
+                        <h1 class="logo">Payment Retry Engine</h1>
+                        <p class="subtitle">AI-Powered Adaptive Payment Recovery System</p>
+                    </div>
+                </div>
+
+                <div class="engine-status">
+                    <span class="status-dot"></span>
+                    <span>XGBoost Engine Online</span>
+                </div>
+            </div>
+
+            <!-- Main Tab Navigation -->
+            <nav class="nav" aria-label="Main Navigation">
+                <button class="nav-btn active" data-tab="dashboard" id="tab-btn-dashboard">
+                    <span>📊</span> Dashboard
+                </button>
+                <button class="nav-btn" data-tab="analyzer" id="tab-btn-analyzer">
+                    <span>⚡</span> Recovery Analyzer
+                </button>
+                <button class="nav-btn" data-tab="transactions" id="tab-btn-transactions">
+                    <span>📋</span> Transactions
+                </button>
+                <button class="nav-btn" data-tab="model" id="tab-btn-model">
+                    <span>🎯</span> Model Performance
+                </button>
+            </nav>
+        </header>
+
+        <!-- Main Workspace Container -->
+        <main class="container">
+
+            <!-- 1. DASHBOARD TAB -->
+            <section id="dashboard" class="tab active" aria-labelledby="tab-btn-dashboard">
+                <div class="section-header">
+                    <h2>Executive Overview</h2>
+                    <p>Real-time analytics and comparative impact of the adaptive AI recovery policy</p>
+                </div>
+
+                <!-- KPI Metric Cards -->
+                <div class="kpi-grid">
+                    <div class="kpi-card">
+                        <div class="kpi-top">
+                            <div class="kpi-label">Total Analyzed</div>
+                            <span class="kpi-badge">Live</span>
+                        </div>
+                        <div class="kpi-value" id="total-analyzed">0</div>
+                        <div class="kpi-subtext">Failed payment requests</div>
+                    </div>
+
+                    <div class="kpi-card success">
+                        <div class="kpi-top">
+                            <div class="kpi-label">Recovery Rate</div>
+                            <span class="kpi-badge" id="rate-improvement-badge">+0% vs Baseline</span>
+                        </div>
+                        <div class="kpi-value" id="recovery-rate">0.0%</div>
+                        <div class="kpi-subtext">Successful smart recoveries</div>
+                    </div>
+
+                    <div class="kpi-card accent">
+                        <div class="kpi-top">
+                            <div class="kpi-label">Recovered Value</div>
+                            <span class="kpi-badge" id="saved-retries-count">Fees Saved</span>
+                        </div>
+                        <div class="kpi-value" id="recovered-value">₹0</div>
+                        <div class="kpi-subtext">Net transaction value rescued</div>
+                    </div>
+
+                    <div class="kpi-card warning">
+                        <div class="kpi-top">
+                            <div class="kpi-label">Avg Probability</div>
+                            <span class="kpi-badge">Confidence</span>
+                        </div>
+                        <div class="kpi-value" id="avg-probability">0%</div>
+                        <div class="kpi-subtext">Mean recovery likelihood</div>
+                    </div>
+                </div>
+
+                <!-- Comparative Visualizations -->
+                <div class="charts-row">
+                    <div class="chart-card">
+                        <div class="chart-card-header">
+                            <h3>Recovery Efficiency Comparison</h3>
+                            <span class="chart-badge">Benchmark</span>
+                        </div>
+                        <div class="chart-canvas-wrapper">
+                            <canvas id="comparisonChart"></canvas>
+                        </div>
+                        <div class="chart-note">
+                            <span>Baseline: Blindly retry all failed transactions</span>
+                            <strong>Adaptive AI: Smart threshold policy</strong>
+                        </div>
+                    </div>
+
+                    <div class="chart-card">
+                        <div class="chart-card-header">
+                            <h3>Decisions Distribution</h3>
+                            <span class="chart-badge">Policy Split</span>
+                        </div>
+                        <div class="chart-canvas-wrapper">
+                            <canvas id="decisionsChart"></canvas>
+                        </div>
+                        <div class="chart-note">
+                            <span>RETRY (P &gt; 0.6) | STOP (P &le; 0.4) | CUSTOMER_ACTION</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Action Bar -->
+                <div class="action-buttons">
+                    <button class="btn btn-primary" id="generate-sample-btn" onclick="generateSampleData()">
+                        <span>🎲</span> Generate Sample Transactions
+                    </button>
+                    <button class="btn btn-secondary" onclick="downloadReport()">
+                        <span>📥</span> Export CSV Report
+                    </button>
+                </div>
+            </section>
+
+            <!-- 2. ANALYZER TAB -->
+            <section id="analyzer" class="tab" aria-labelledby="tab-btn-analyzer">
+                <div class="section-header">
+                    <h2>Payment Recovery Analyzer</h2>
+                    <p>Test individual failed transactions through the XGBoost prediction engine</p>
+                </div>
+
+                <div class="analyzer-layout">
+                    <!-- Form Container -->
+                    <div class="analyzer-card">
+                        <!-- Quick presets -->
+                        <div class="presets-container">
+                            <div class="presets-label">Load Realistic Test Scenarios:</div>
+                            <div class="preset-chips">
+                                <button type="button" class="preset-btn" data-preset="soft">Soft Decline (Card)</button>
+                                <button type="button" class="preset-btn" data-preset="timeout">Gateway Timeout (UPI)</button>
+                                <button type="button" class="preset-btn" data-preset="hard">Card Blocked (Hard Decline)</button>
+                                <button type="button" class="preset-btn" data-preset="duplicate">Duplicate Transaction</button>
+                            </div>
+                        </div>
+
+                        <form id="analyzeForm" class="form">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="amount-input">Amount (₹ INR) *</label>
+                                    <input type="number" id="amount-input" name="amount" placeholder="e.g. 5000" min="1" step="0.01" value="5000" required>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="failure-select">Failure Category *</label>
+                                    <select id="failure-select" name="failure_type" required>
+                                        <option value="soft_decline">Soft Decline (Temporary/Issuer busy)</option>
+                                        <option value="timeout">Network Timeout (Gateway drop)</option>
+                                        <option value="hard_decline">Hard Decline (Card blocked/Expired)</option>
+                                        <option value="duplicate">Duplicate Transaction</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="method-select">Payment Method *</label>
+                                    <select id="method-select" name="payment_method" required>
+                                        <option value="card">Credit / Debit Card</option>
+                                        <option value="upi">UPI (Instant VPA)</option>
+                                        <option value="netbanking">Net Banking</option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="history-select">Customer Credit / History *</label>
+                                    <select id="history-select" name="customer_history" required>
+                                        <option value="good">Good (Reliable recurring buyer)</option>
+                                        <option value="medium">Medium (Moderate history)</option>
+                                        <option value="bad">Bad (High dispute rate / Risky)</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="retry-input">Retry Attempt Number</label>
+                                    <input type="number" id="retry-input" name="retry_number" value="1" min="1" max="5">
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="hours-input">Hours Since Failure</label>
+                                    <input type="number" id="hours-input" name="time_since_failure_hours" value="1" min="0" max="168">
+                                </div>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group full">
+                                    <label for="issuer-input">Card Issuer / Bank (Optional)</label>
+                                    <input type="text" id="issuer-input" name="card_issuer" placeholder="e.g. HDFC, ICICI, SBI, Axis" value="HDFC">
+                                </div>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary btn-large" id="analyze-submit-btn">
+                                Analyze &amp; Predict Optimal Action
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Output Results Card -->
+                    <div class="results-wrapper">
+                        <div id="analysisResults" class="results hidden">
+                            <div class="result-card">
+                                <div class="result-card-header">
+                                    <h3>ML Recovery Recommendation</h3>
+                                    <span class="confidence-badge" id="result-confidence">High Confidence</span>
+                                </div>
+
+                                <div class="result-rows">
+                                    <div class="result-row">
+                                        <span class="result-label">Transaction ID</span>
+                                        <span class="result-value"><code id="result-txn-id">-</code></span>
+                                    </div>
+
+                                    <div class="result-row">
+                                        <span class="result-label">Amount</span>
+                                        <span class="result-value" id="result-amount">₹0.00</span>
+                                    </div>
+
+                                    <div class="result-row">
+                                        <span class="result-label">Recovery Likelihood</span>
+                                        <div class="probability-bar-container">
+                                            <div class="probability-bar">
+                                                <div class="probability-fill" id="result-probability-bar"></div>
+                                                <span class="probability-text" id="result-probability">0%</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="result-row">
+                                        <span class="result-label">Recommended Action</span>
+                                        <span class="action-badge" id="result-action">-</span>
+                                    </div>
+
+                                    <div class="result-row">
+                                        <span class="result-label">Expected Recovery Value</span>
+                                        <span class="result-value" id="result-expected-value">₹0.00</span>
+                                    </div>
+                                </div>
+
+                                <div class="reasoning-box">
+                                    <h4>Engine Decision Rationale</h4>
+                                    <p id="result-reasoning">-</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 3. TRANSACTIONS TAB -->
+            <section id="transactions" class="tab" aria-labelledby="tab-btn-transactions">
+                <div class="section-header">
+                    <h2>Payment Transaction Ledger</h2>
+                    <p>Live audit trail of failed transactions and automated decision outcomes</p>
+                </div>
+
+                <div class="table-card">
+                    <div class="table-toolbar">
+                        <strong>Recent Analyzed Transactions</strong>
+                        <div style="display: flex; gap: 8px;">
+                            <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 13px;" onclick="loadTransactions()">
+                                Refresh
+                            </button>
+                            <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 13px;" onclick="downloadReport()">
+                                Export CSV
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="transactions-table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Transaction ID</th>
+                                    <th>Amount</th>
+                                    <th>Failure Type</th>
+                                    <th>Recovery Prob</th>
+                                    <th>AI Action</th>
+                                    <th>Expected Value</th>
+                                    <th>Timestamp</th>
+                                </tr>
+                            </thead>
+                            <tbody id="transactionsBody">
+                                <tr>
+                                    <td colspan="7" style="text-align: center; padding: 24px;">Loading transactions...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 4. MODEL METRICS TAB -->
+            <section id="model" class="tab" aria-labelledby="tab-btn-model">
+                <div class="section-header">
+                    <h2>Machine Learning Model Metrics</h2>
+                    <p>Current XGBoost classifier validation scores on 10,000 payment event distributions</p>
+                </div>
+
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-label">Accuracy</div>
+                        <div class="metric-value" id="metric-accuracy">-</div>
+                        <div class="metric-bar"><div class="metric-bar-fill" id="metric-accuracy-bar"></div></div>
+                        <div class="metric-meta">Overall classification accuracy</div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-label">Precision</div>
+                        <div class="metric-value" id="metric-precision">-</div>
+                        <div class="metric-bar"><div class="metric-bar-fill" id="metric-precision-bar"></div></div>
+                        <div class="metric-meta">Positive predictive rate</div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-label">Recall (Sensitivity)</div>
+                        <div class="metric-value" id="metric-recall">-</div>
+                        <div class="metric-bar"><div class="metric-bar-fill" id="metric-recall-bar"></div></div>
+                        <div class="metric-meta">Identified true recoverable rate</div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-label">F1-Score</div>
+                        <div class="metric-value" id="metric-f1">-</div>
+                        <div class="metric-bar"><div class="metric-bar-fill" id="metric-f1-bar"></div></div>
+                        <div class="metric-meta">Harmonic balance of precision &amp; recall</div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-label">ROC-AUC</div>
+                        <div class="metric-value" id="metric-auc">-</div>
+                        <div class="metric-bar"><div class="metric-bar-fill" id="metric-auc-bar"></div></div>
+                        <div class="metric-meta">Discrimination power</div>
+                    </div>
+                </div>
+
+                <div class="model-info-card">
+                    <div class="model-info-left">
+                        <h4>Adaptive Model Pipeline: XGBoost 2.0+ &amp; Scikit-Learn</h4>
+                        <p id="model-trained-date">Trained at: Active</p>
+                        <p id="model-total-preds" style="color: var(--text-muted); font-size: 12px;"></p>
+                    </div>
+
+                    <div>
+                        <button class="btn btn-primary" id="retrain-btn" onclick="retrainModel()">
+                            <span>⚡</span> Retrain Model on Fresh Data
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+
+        <!-- Global Footer -->
+        <footer class="footer">
+            <p>Smart Payment Retry Engine &copy; 2024 | AI-Powered Adaptive Payment Recovery System</p>
+        </footer>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/api.js"></script>
+    <script src="js/charts.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

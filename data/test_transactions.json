@@ -1,0 +1,80 @@
+[
+  {
+    "description": "Transient soft decline on HDFC Card with prime customer",
+    "payload": {
+      "amount": 7500.00,
+      "failure_type": "soft_decline",
+      "payment_method": "card",
+      "card_issuer": "HDFC",
+      "customer_history": "good",
+      "retry_number": 1,
+      "time_since_failure_hours": 1
+    },
+    "expected_action": "RETRY"
+  },
+  {
+    "description": "UPI Gateway network timeout during bank server congestion",
+    "payload": {
+      "amount": 1499.00,
+      "failure_type": "timeout",
+      "payment_method": "upi",
+      "card_issuer": null,
+      "customer_history": "good",
+      "retry_number": 1,
+      "time_since_failure_hours": 0
+    },
+    "expected_action": "RETRY"
+  },
+  {
+    "description": "Permanent hard decline on expired/blocked card",
+    "payload": {
+      "amount": 3200.00,
+      "failure_type": "hard_decline",
+      "payment_method": "card",
+      "card_issuer": "SBI",
+      "customer_history": "bad",
+      "retry_number": 2,
+      "time_since_failure_hours": 24
+    },
+    "expected_action": "STOP"
+  },
+  {
+    "description": "Duplicate payment idempotency conflict",
+    "payload": {
+      "amount": 12500.00,
+      "failure_type": "duplicate",
+      "payment_method": "netbanking",
+      "card_issuer": null,
+      "customer_history": "medium",
+      "retry_number": 1,
+      "time_since_failure_hours": 0
+    },
+    "expected_action": "STOP"
+  },
+  {
+    "description": "Netbanking session drop with medium customer score",
+    "payload": {
+      "amount": 4200.00,
+      "failure_type": "soft_decline",
+      "payment_method": "netbanking",
+      "card_issuer": null,
+      "customer_history": "medium",
+      "retry_number": 1,
+      "time_since_failure_hours": 4
+    },
+    "expected_action": "CUSTOMER_ACTION"
+  },
+  {
+    "description": "High value enterprise transaction timeout",
+    "payload": {
+      "amount": 48500.00,
+      "failure_type": "timeout",
+      "payment_method": "card",
+      "card_issuer": "ICICI",
+      "customer_history": "good",
+      "retry_number": 1,
+      "time_since_failure_hours": 2
+    },
+    "expected_action": "RETRY"
+  }
+]
