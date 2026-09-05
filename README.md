@@ -45,17 +45,18 @@ The **Smart Payment Retry Engine** is an intelligent full-stack system that anal
 ```
 d:/Razor-pay/
 ├── backend/
-│   ├── app.py                      # Flask entry point & factory
-│   ├── config.py                   # Absolute path configs for SQLite & models
+│   ├── app.py                      # Flask entry point & application factory
+│   ├── config.py                   # Multi-environment configuration (Dev, Prod, Test)
 │   ├── requirements.txt            # Python dependencies
 │   ├── database/
 │   │   ├── db.py                   # SQLAlchemy instance
-│   │   ├── models.py               # Transaction, RecoveryDecision, ModelMetrics
+│   │   ├── models.py               # Transaction, RecoveryDecision, ModelMetrics, User, AdminAuditLog
 │   │   └── init_db.py              # Database initialization
 │   ├── routes/
+│   │   ├── auth_routes.py          # JWT authentication (/login, /register, /me)
 │   │   ├── payment_routes.py       # Analyze, get, list, and seed endpoints
-│   │   ├── analytics_routes.py     # Overview, comparison, and CSV export
-│   │   └── model_routes.py         # Model performance & retraining endpoints
+│   │   ├── analytics_routes.py     # Overview, comparison, and safe CSV export
+│   │   └── model_routes.py         # Model performance & RBAC-protected retraining
 │   ├── services/
 │   │   ├── payment_service.py      # Core transaction pipeline
 │   │   ├── decision_service.py     # Economic EV calculation & routing rules
@@ -66,11 +67,19 @@ d:/Razor-pay/
 │   │   ├── model_trainer.py        # XGBoost training & metric logging
 │   │   └── model_predictor.py      # Inference engine with fallback safeguard
 │   ├── utils/
+│   │   ├── auth.py                 # JWT token issuance, verification & RBAC decorators
+│   │   ├── validators.py           # Input bounds, NaN/Inf checks & enum whitelists
+│   │   ├── security_headers.py     # CSP, HSTS, X-Frame-Options, X-Content-Type-Options
+│   │   ├── logger.py               # Sensitive credential & card data redaction logger
 │   │   ├── constants.py            # Decision thresholds & retry costs
 │   │   └── helpers.py              # Formatting helpers
 │   ├── models/
 │   │   ├── recovery_model.pkl      # Saved XGBoost model
 │   │   └── scaler.pkl              # Saved StandardScaler
+│   ├── tests/
+│   │   ├── test_security.py        # 28-point automated security test suite
+│   │   ├── test_live_flow.py       # Real transaction lifecycle & SQLite test
+│   │   └── test_e2e.py             # End-to-end endpoint verification
 │   └── instance/
 │       └── payments.db             # SQLite database
 │
@@ -79,7 +88,7 @@ d:/Razor-pay/
 │   ├── css/
 │   │   └── style.css               # Razorpay-inspired styling
 │   ├── js/
-│   │   ├── api.js                  # API client
+│   │   ├── api.js                  # API client with automatic JWT token management
 │   │   ├── charts.js               # Chart.js renderers
 │   │   └── app.js                  # Frontend interactions & tab management
 │   └── assets/
@@ -95,6 +104,7 @@ d:/Razor-pay/
 │   └── 03_results.md               # Empirical Performance Evaluation
 │
 ├── README.md
+├── SECURITY.md                     # Complete Security Policy & Threat Model
 ├── SETUP.md
 ├── API_DOCUMENTATION.md
 └── .env.example
@@ -110,7 +120,7 @@ cd backend
 pip install -r requirements.txt
 python app.py
 ```
-*Backend runs on `http://localhost:5000`*
+*Backend runs on `http://localhost:5005`*
 
 ### 2. Frontend
 ```bash
@@ -118,6 +128,21 @@ cd frontend
 python -m http.server 8000
 ```
 *Open `http://localhost:8000` in your browser.*
+
+---
+
+## 🔒 Enterprise Security & Hardening
+
+The engine has undergone a comprehensive security audit and hardening process:
+- **Authentication & RBAC:** RFC 7519 compliant HMAC-SHA256 JWT tokens with role separation (`USER` vs `ADMIN`).
+- **Input Validation & Sanitization:** Strict whitelisting of failure types, payment rails, customer history; strict numeric bounds ($0.01 - $10M) and protection against `NaN` / `Infinity`.
+- **Administrative Endpoint Protection:** `/api/model/retrain` and `/api/payments/seed` are strictly protected with `@admin_required` and thread locking against DoS.
+- **SQL & CSV Injection Defense:** 100% parameterized SQLAlchemy ORM queries; automatic escaping (`'`) for CSV formula triggers (`=`, `+`, `-`, `@`).
+- **Zero Cardholder Data (PCI DSS Alignment):** Never accepts, stores, or logs PAN, CVV, PIN, or OTP. Automatic logging redaction filters.
+- **Security Headers & Rate Limiting:** Injects CSP, `X-Content-Type-Options: nosniff`, `X-Frame-Options: SAMEORIGIN`; Flask-Limiter IP-based throttling.
+- **Automated Verification:** Comprehensive 28-point automated security test suite in `backend/tests/test_security.py` (28/28 tests passing).
+
+See [SECURITY.md](SECURITY.md) for the complete security policy, threat model, and vulnerability reporting procedures.
 
 ---
 
@@ -135,8 +160,10 @@ python -m http.server 8000
 
 ## 📜 Documentation Links
 
+- **[Security Policy & Architecture](SECURITY.md)**: Full security audit report and defensive measures.
 - **[Setup Guide](SETUP.md)**: Detailed environment and execution steps.
 - **[REST API Reference](API_DOCUMENTATION.md)**: Full endpoint specifications and response schemas.
 - **[Research: The Problem](research/01_problem.md)**: Deep dive into digital payment failure economics.
 - **[Research: The ML Approach](research/02_approach.md)**: Feature engineering and model architecture.
 - **[Research: Results & ROI](research/03_results.md)**: Empirical evaluation and cost savings breakdown.
+

@@ -91,3 +91,54 @@ class ModelMetrics(db.Model):
             'total_predictions': self.total_predictions,
             'correct_predictions': self.correct_predictions
         }
+
+class User(db.Model):
+    __tablename__ = 'users'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True, nullable=False, index=True)
+    password_hash = db.Column(db.String(255), nullable=False)
+    role = db.Column(db.String(20), nullable=False, default='USER')  # 'USER' or 'ADMIN'
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def set_password(self, password):
+        from werkzeug.security import generate_password_hash
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password):
+        from werkzeug.security import check_password_hash
+        return check_password_hash(self.password_hash, password)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'username': self.username,
+            'role': self.role,
+            'is_active': self.is_active,
+            'created_at': self.created_at.isoformat() if self.created_at else None
+        }
+
+class AdminAuditLog(db.Model):
+    __tablename__ = 'admin_audit_logs'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    user_id = db.Column(db.Integer, nullable=True)
+    username = db.Column(db.String(80), nullable=True)
+    action = db.Column(db.String(100), nullable=False)
+    status = db.Column(db.String(20), nullable=False)  # 'SUCCESS', 'FAILED', 'REJECTED'
+    ip_address = db.Column(db.String(45), nullable=True)
+    details = db.Column(db.Text, nullable=True)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'timestamp': self.timestamp.isoformat() if self.timestamp else None,
+            'username': self.username,
+            'action': self.action,
+            'status': self.status,
+            'ip_address': self.ip_address,
+            'details': self.details
+        }
+

@@ -472,9 +472,23 @@ async function generateSampleData() {
     }
 }
 
-function downloadReport() {
+async function downloadReport() {
     showToast('Downloading transactions and decisions CSV...', 'info');
-    window.location.href = API.getReportExportUrl();
+    try {
+        const blob = await API.downloadReportBlob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = 'recovery_report.csv';
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        a.remove();
+        showToast('CSV report downloaded successfully', 'success');
+    } catch (e) {
+        showToast('Failed to download report: ' + e.message, 'error');
+    }
 }
 
 // ==========================================

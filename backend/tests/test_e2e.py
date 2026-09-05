@@ -3,19 +3,36 @@ import json
 import sys
 
 BASE_URL = 'http://localhost:5005'
+_AUTH_TOKEN = None
+
+def get_token():
+    global _AUTH_TOKEN
+    if not _AUTH_TOKEN:
+        login_data = json.dumps({'username': 'demo_user', 'password': 'User@12345'}).encode('utf-8')
+        req = urllib.request.Request(f'{BASE_URL}/api/auth/login', data=login_data, headers={'Content-Type': 'application/json'})
+        res = json.loads(urllib.request.urlopen(req).read().decode())
+        _AUTH_TOKEN = res['token']
+    return _AUTH_TOKEN
 
 def get(endpoint):
     url = BASE_URL + endpoint
-    req = urllib.request.Request(url)
+    headers = {}
+    if endpoint != '/':
+        headers['Authorization'] = f'Bearer {get_token()}'
+    req = urllib.request.Request(url, headers=headers)
     with urllib.request.urlopen(req) as resp:
         return resp.status, json.loads(resp.read().decode())
 
 def post(endpoint, payload):
     url = BASE_URL + endpoint
+    headers = {
+        'Content-Type': 'application/json',
+        'Authorization': f'Bearer {get_token()}'
+    }
     req = urllib.request.Request(
         url,
         data=json.dumps(payload).encode('utf-8'),
-        headers={'Content-Type': 'application/json'}
+        headers=headers
     )
     with urllib.request.urlopen(req) as resp:
         return resp.status, json.loads(resp.read().decode())
@@ -75,7 +92,8 @@ def run_all_tests():
 
     # 6. CSV Export
     export_url = BASE_URL + '/api/analytics/export'
-    with urllib.request.urlopen(export_url) as resp:
+    req = urllib.request.Request(export_url, headers={'Authorization': f'Bearer {get_token()}'})
+    with urllib.request.urlopen(req) as resp:
         csv_data = resp.read().decode('utf-8')
         lines = csv_data.strip().splitlines()
         print(f"\n[OK] CSV Export:")

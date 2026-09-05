@@ -1,18 +1,23 @@
+import threading
 from datetime import datetime
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, current_app
 from database.db import db
 from database.models import ModelMetrics
 from ml.model_trainer import train_model, get_latest_metrics
+from utils.auth import jwt_required, admin_required, log_admin_action
 
 bp = Blueprint('model', __name__, url_prefix='/api/model')
 
+# Mutex lock to prevent simultaneous CPU-heavy model retraining
+_retrain_lock = threading.Lock()
+
 @bp.route('/metrics', methods=['GET'])
+@jwt_required
 def metrics():
     """Get latest ML model performance metrics"""
     latest = ModelMetrics.query.order_by(ModelMetrics.metric_date.desc()).first()
     
     if not latest:
-        # Fallback to defaults or seed an initial metric record
         fallback = get_latest_metrics()
         seed_record = ModelMetrics(
             accuracy=fallback['accuracy'],
@@ -39,6 +44,7 @@ def metrics():
     }), 200
 
 @bp.route('/info', methods=['GET'])
+@jwt_required
 def info():
     """Get model metadata and pipeline information"""
     return jsonify({
@@ -54,9 +60,22 @@ def info():
     }), 200
 
 @bp.route('/retrain', methods=['POST'])
+@admin_required
 def retrain():
-    """Trigger model retraining with fresh synthetic distribution"""
+    """
+    Trigger model retraining with fresh synthetic distribution
+    Restricted to ADMIN role. Thread-safe concurrency locked.
+    """
+    acquired = _retrain_lock.acquire(blocking=False)
+    if not acquired:
+        log_admin_action('/api/model/retrain', 'REJECTED', 'Retraining already in progress')
+        return jsonify({
+            'error': 'Conflict',
+            'message': 'A model retraining job is already in progress. Please wait until it completes.'
+        }), 409
+        
     try:
+        current_app.logger.info("Starting authorized model retraining job...")
         results = train_model(n_samples=10000)
         
         # Save metrics to database
@@ -72,6 +91,12 @@ def retrain():
         db.session.add(metric_record)
         db.session.commit()
         
+        log_admin_action(
+            '/api/model/retrain', 
+            'SUCCESS', 
+            f"Trained XGBoost model. Accuracy: {results['accuracy']:.4f}, ROC-AUC: {results['roc_auc']:.4f}"
+        )
+        
         return jsonify({
             'message': 'Model retrained successfully and artifacts updated',
             'metrics': {
@@ -84,6 +109,14 @@ def retrain():
                 'correct_predictions': results['correct']
             }
         }), 200
+        
     except Exception as e:
         db.session.rollback()
-        return jsonify({'error': f'Model retraining failed: {str(e)}'}), 500
+        current_app.logger.error(f"Model retraining failed: {e}", exc_info=True)
+        log_admin_action('/api/model/retrain', 'FAILED', str(e))
+        return jsonify({
+            'error': 'Internal Server Error',
+            'message': 'Model retraining failed due to an internal computational error'
+        }), 500
+    finally:
+        _retrain_lock.release()
