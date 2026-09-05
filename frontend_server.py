@@ -32,14 +32,18 @@ class ResilientHandler(SimpleHTTPRequestHandler):
 
 def run():
     import socketserver
+    import time
     socketserver.TCPServer.allow_reuse_address = True
     port = int(os.environ.get('FRONTEND_PORT', 8000))
     server = HTTPServer(('0.0.0.0', port), ResilientHandler)
     print(f"Smart Payment Retry Engine Frontend running on http://localhost:{port}")
-    try:
-        server.serve_forever()
-    except KeyboardInterrupt:
-        pass
+    while True:
+        try:
+            server.serve_forever()
+        except KeyboardInterrupt:
+            break
+        except Exception as e:
+            time.sleep(0.5)
 
 if __name__ == '__main__':
     run()
