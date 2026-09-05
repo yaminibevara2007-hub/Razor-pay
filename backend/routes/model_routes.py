@@ -38,6 +38,21 @@ def metrics():
         'trained_at': latest.metric_date.isoformat() if latest.metric_date else datetime.utcnow().isoformat()
     }), 200
 
+@bp.route('/info', methods=['GET'])
+def info():
+    """Get model metadata and pipeline information"""
+    return jsonify({
+        'model_name': 'XGBoost Adaptive Payment Recovery Classifier',
+        'algorithm': 'Gradient Boosted Decision Trees',
+        'version': '2.0+',
+        'features': [
+            'amount', 'failure_type', 'payment_method', 'customer_history',
+            'retry_number', 'time_since_failure_hours', 'card_issuer'
+        ],
+        'target': 'is_recoverable',
+        'status': 'active'
+    }), 200
+
 @bp.route('/retrain', methods=['POST'])
 def retrain():
     """Trigger model retraining with fresh synthetic distribution"""

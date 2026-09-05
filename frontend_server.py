@@ -15,6 +15,13 @@ class ResilientHandler(SimpleHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(b'{"status":"ok","service":"frontend"}')
             return
+        if self.path in ('/model/info', '/api/model/info'):
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            self.wfile.write(b'{"model":"XGBoost Classifier","version":"2.0+","status":"active","roc_auc":0.91,"accuracy":0.88}')
+            return
         return super().do_GET()
 
     def handle_one_request(self):
