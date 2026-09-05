@@ -1,5 +1,10 @@
 {
   "version": 2,
+  "functions": {
+    "api/index.py": {
+      "excludeFiles": "{frontend/**,research/**,backend/tests/**,data/**,*.md}"
+    }
+  },
   "rewrites": [
     {
       "source": "/api/(.*)",

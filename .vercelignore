@@ -1,0 +1,9 @@
+research/
+backend/tests/
+backend/instance/*.db
+*.md
+!README.md
+!SECURITY.md
+.venv/
+__pycache__/
+*.pyc

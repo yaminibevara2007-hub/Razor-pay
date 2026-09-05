@@ -43,11 +43,14 @@ def predict_recovery_probability(transaction_data):
         return fallback_prediction(transaction_data)
         
     try:
-        import pandas as pd
-        from ml.feature_extractor import FEATURE_COLUMNS
+        from ml.feature_extractor import extract_features, FEATURE_COLUMNS
         features = extract_features(transaction_data)
-        features_df = pd.DataFrame([features], columns=FEATURE_COLUMNS)
-        features_scaled = scaler.transform(features_df)
+        try:
+            import pandas as pd
+            features_scaled = scaler.transform(pd.DataFrame([features], columns=FEATURE_COLUMNS))
+        except Exception:
+            features_scaled = scaler.transform([features])
+            
         proba = model.predict_proba(features_scaled)[0][1]
         return float(np.clip(proba, 0.0, 1.0))
     except Exception as e:
